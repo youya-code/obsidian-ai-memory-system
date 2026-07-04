@@ -1,0 +1,13 @@
+# 记忆存储规则（本作用域：<项目路径>）
+
+所有长期记忆写入 Obsidian，不写 .claude/memory/。
+
+| 记忆类型 | Obsidian 路径 | 标签 |
+|----------|--------------|------|
+| 项目约定 | 记忆/<项目名>/项目约定.md | [memory, <项目名>, convention] |
+| 踩坑记录 | 记忆/<项目名>/踩坑记录.md | [memory, <项目名>, pitfall] |
+| 偏好设置 | 记忆/<项目名>/偏好设置.md | [memory, <项目名>, preference] |
+
+读取：`mcp__obsidian__search_tags tags: [memory, <项目名>]`
+写入：`mcp__obsidian__update_note mode="append"`
+规则：同类记忆追加到同一文件，不新建碎片文件

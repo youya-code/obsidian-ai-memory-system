@@ -1,0 +1,15 @@
+{
+  "name": "obsidian-ai-memory-system",
+  "version": "1.0.0",
+  "description": "将 Obsidian 作为 AI 编程助手的外挂知识库与记忆系统",
+  "type": "module",
+  "scripts": {
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "vitepress": "^1.6.0"
+  }
+}
