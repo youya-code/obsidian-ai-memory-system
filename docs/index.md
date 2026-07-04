@@ -12,9 +12,6 @@ hero:
     - theme: alt
       text: 开始搭建
       link: /guide/
-  image:
-    src: /hero.svg
-    alt: AI Coding Memory System
 
 features:
   - icon: 👁️

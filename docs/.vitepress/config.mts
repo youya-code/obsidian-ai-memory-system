@@ -4,8 +4,9 @@ export default defineConfig({
   lang: 'zh-CN',
   title: 'Obsidian AI Memory System',
   description: '将 Obsidian 作为 AI 编程助手的外挂知识库与记忆系统',
+  base: '/obsidian-ai-memory-system/',
 
-  head: [['link', { rel: 'icon', href: '/favicon.ico' }]],
+  head: [['link', { rel: 'icon', href: '/obsidian-ai-memory-system/favicon.ico' }]],
 
   themeConfig: {
     logo: '/logo.svg',
