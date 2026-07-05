@@ -359,122 +359,60 @@ Obsidian 中，文件就是文件。不存在"系统自动压缩"这回事。你
 
 ---
 
-## 八、踩坑实录：开发过程中的真实问题
+## 八、踩坑实录
 
-在开发这套系统的过程中，我们踩了不少坑。以下是最关键的 6 个，按时间顺序记录。
+### 坑 1：Obsidian MCP 只在当前项目可用
 
-### 坑 1：`Bundle-ActivationPolicy: lazy` 导致 Bundle 不自动激活
+**现象**：在项目 A 配好了 Obsidian MCP，切到项目 B 后 `mcp__obsidian__*` 工具全部消失。
 
-**现象**：MCP HTTP Server 配置好了，但调用工具时总是报"服务不可用"。检查端口发现根本没有进程在监听 27124。
+**原因**：MCP 配置只写在了单个项目的 `.claude.json` projects 节点下，不是全局的。
 
-**原因**：OSGi 插件清单中设置了 `Bundle-ActivationPolicy: lazy`，这意味着 Bundle 只有在它的类被首次访问时才会激活。而 MCP HTTP Server 的启动代码在 `Activator.start()` 中，如果没人触发类加载，整个服务根本不会启动。
-
-**解决方案**：不要依赖 lazy activation 来自动启动服务。改用 Eclipse `IStartup` 扩展点，让平台在启动完成后主动触发 Bundle 激活。
-
-```xml
-<!-- plugin.xml -->
-<extension point="org.eclipse.ui.startup">
-  <startup class="com.sysdesim.arch.ce.ai.mcp.transport.McpStartup"/>
-</extension>
-```
-
-`McpStartup` 实现 `IStartup.earlyStartup()`，在其中手动触发 HTTP Server 的初始化。这样无论 Bundle 的激活策略是什么，服务都会在 IDE 启动后自动运行。
-
-### 坑 2：`new ResourceSetImpl()` 是空的，查不到代码生成工程数据
-
-**现象**：在 Config 工具中需要通过 EMF 查询项目模型（如代码生成的工程列表）。用 `new ResourceSetImpl()` 创建资源集，然后加载 `.ecore` 或 `.xmi` 文件时，发现资源集里没有任何已注册的工程数据。
-
-**原因**：`new ResourceSetImpl()` 创建的是一个**全新的、空的** EMF 资源集，与 Eclipse 工作空间中已经加载的模型完全隔离。工作空间中的那些 EPackage、EClass 注册信息都在平台的全局资源集中，新创建的资源集根本看不到。
-
-**解决方案**：改用 `CEUtil.getWorkspace()` 获取平台级别的资源集。
-
-```java
-// ❌ 错误
-ResourceSet rs = new ResourceSetImpl();
-
-// ✅ 正确
-ResourceSet rs = CEUtil.getWorkspace();
-```
-
-`CEUtil.getWorkspace()` 返回的是与 Eclipse 工作空间关联的资源集，其中已经包含了所有已加载的 Ecore 模型、工程定义和代码生成配置。
-
-### 坑 3：`com.sysdesim.arch.ce.model.util` 在 OSGi 运行时不可用
-
-**现象**：代码引用了 `com.sysdesim.arch.ce.model.util` 包中的工具类，编译通过，但运行时抛出 `NoClassDefFoundError` 或 `ClassNotFoundException`。
-
-**原因**：`com.sysdesim.arch.ce.model.util` 所在的 Bundle 虽然存在于 target platform 中，但它没有被正确导出（Export-Package 未声明），或者 Bundle 本身在 OSGi 运行时中未被解析（resolve）。编译时 PDE 能找到它，但运行时 OSGi 类加载器找不到。
-
-**解决方案**：改用 `com.sysdesim.arch.ce.project.core.util.CEUtil`，这个类所在的 Bundle 导出声明正确，且在运行时稳定可用。两个类的功能高度重叠，但后者的 OSGi 配置更加规范。
-
-```java
-// ❌ 不可用
-import com.sysdesim.arch.ce.model.util.SomeUtil;
-
-// ✅ 改用
-import com.sysdesim.arch.ce.project.core.util.CEUtil;
-```
-
-### 坑 4：Obsidian MCP 只在一个项目下配了，切项目就没了
-
-**现象**：在某项目的 `.claude.json` 中配置了 Obsidian MCP 后，该项目的 Claude Code 会话中 `mcp__obsidian__*` 工具可用。但切换到另一个项目后，工具消失，需要重新配置。
-
-**原因**：`.claude.json` 是项目级配置文件，作用域仅限于当前项目目录。切换项目后，Claude Code 加载的是新项目的配置文件，其中没有 Obsidian MCP 的配置。
-
-**解决方案**：使用 `claude mcp add --scope user` 全局注册。
-
+**解决方案**：
 ```bash
 claude mcp add --scope user obsidian -- npx -y obsidian-notes-mcp
 ```
+这条命令将 Obsidian MCP 注册到全局配置区，所有项目共享。
 
-全局配置写入 `~/.claude.json` 的 `mcpServers` 段，所有项目共享。之后不管在哪个目录打开 Claude Code，Obsidian 工具都始终可用。详见本文 3.4 节。
+### 坑 2：settings.json 被代理软件覆盖
 
-### 坑 5：`settings.json` 被 ccswitch 覆盖，hook 丢了
+**现象**：配好的 hook 或自定义配置，用了几天后发现消失了。
 
-**现象**：在 `~/.claude/settings.json` 中精心配置了 SessionStart hook（见四.5 节），用了几天后发现 hook 莫名其妙消失了。
+**原因**：ccswitch 等代理工具会整体覆盖 `settings.json`，不合并。
 
-**原因**：`ccswitch` 等代理/切换工具在切换 Claude Code 配置时会**整体覆盖** `settings.json`。它不合并，而是直接替换整个文件。你手动添加的任何自定义配置——hooks、permissions、env vars——都会被覆盖。
+**解决方案**：将持久配置（hooks 等）写入 `settings.local.json`。该文件行为与 settings.json 完全一致，但不会被任何工具覆盖。
 
-**解决方案**：改用 `settings.local.json`，它与 `settings.json` 行为完全一致，但**永远不会被任何工具覆盖**。
+### 坑 3：Obsidian REST API 中文乱码
 
-```json
-// ~/.claude/settings.local.json（而非 settings.json）
-{
-  "hooks": {
-    "SessionStart": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "powershell -ExecutionPolicy Bypass -File C:/Users/yangpengjie/.claude/hooks/auto-memory-init.ps1"
-          }
-        ]
-      }
-    ]
-  }
-}
-```
+**现象**：用 `curl -d "中文内容"` 直接上传，Obsidian 中显示乱码。
 
-Claude Code 的配置加载优先级：`settings.local.json` 与 `settings.json` 合并，且 `local` 的优先级更高。所以你可以把稳定、不需要工具管理的配置放在 `settings.local.json` 中，把工具可能修改的部分留在 `settings.json` 中。
+**原因**：Windows 终端编码导致 `-d` 参数中的中文被错误编码。
 
-### 坑 6：`curl -d` 上传中文到 Obsidian REST API 变成乱码
-
-**现象**：用 `curl -d` 直接发送中文 Markdown 内容到 Obsidian Local REST API 时，Obsidian 中保存的文件中文全部变成乱码（如 `????` 或 `锟斤拷`）。
-
-**原因**：Windows 下 `curl` 的 `-d` 参数对非 ASCII 字符的编码处理不一致。Windows 终端的默认编码（通常是 GBK 或 CP936）与 Obsidian REST API 期望的 UTF-8 不匹配，`curl` 在发送前做了错误的编码转换。
-
-**解决方案**：先将内容写入本地 UTF-8 文件，再用 `--data-binary "@file"` 上传。
-
+**解决方案**：先用 Write 写到本地临时文件，再用 `--data-binary "@file"` 上传：
 ```bash
-# ❌ 错误：中文可能乱码
-curl -d '{"content": "中文内容"}' http://127.0.0.1:27124/vault/笔记.md
-
-# ✅ 正确：先写文件，再二进制上传
-echo "中文内容" > C:/temp/note.md
-curl --data-binary "@C:/temp/note.md" -H "Content-Type: text/markdown" http://127.0.0.1:27124/vault/笔记.md
+# 1. 先写本地文件
+# 2. 用 --data-binary 上传
+curl -sk -X PUT --data-binary "@local_file.md" "https://127.0.0.1:27124/vault/path/to/note.md"
 ```
 
-`--data-binary` 会原封不动地读取文件字节，不做任何编码转换，确保 UTF-8 内容完整无损地到达 Obsidian。
+### 坑 4：update_note prepend 模式失败
+
+**现象**：`update_note(mode="prepend")` 给已有笔记加 frontmatter 时报错。
+
+**解决**：用 `create_note(overwrite=true)` 重建文件，或者首次创建时就写好 frontmatter。
+
+### 坑 5：list_notes 不显示子文件夹内容
+
+**现象**：`list_notes` 只返回根目录笔记，看不到 `记忆/` 子文件夹内容。
+
+**解决**：用 `search_tags` 按标签搜索替代 `list_notes`。标签搜索不依赖目录结构，更可靠。
+
+### 坑 6：Windows 路径分隔符
+
+**现象**：frontmatter 中 `E:\Projects\my-app` 解析出错。
+
+**原因**：YAML 中 `\` 是转义字符。
+
+**解决**：路径统一用正斜杠：`E:/Projects/my-app`
 
 ---
 
@@ -706,6 +644,40 @@ Claude Code 启动
   }
 }
 ```
+
+**完整脚本**（`~/.claude/hooks/auto-memory-init.ps1`）：
+
+```powershell
+# 核心逻辑：
+# 1. 计算当前项目的 sanitized 路径名
+# 2. 检查 ~/.claude/projects/<sanitized>/memory/MEMORY.md 是否存在
+# 3. 不存在时自动创建指针文件 + Obsidian 记忆文件夹
+# 4. 自动检测项目技术栈（Java/Node/Python/Rust 等）和 git remote
+
+# 完整脚本见 GitHub: scripts/auto-memory-init.ps1
+# https://github.com/youya-code/obsidian-ai-memory-system
+```
+
+**Hook 配置**（`~/.claude/settings.local.json`）：
+```json
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell -ExecutionPolicy Bypass -File C:/Users/<你的用户名>/.claude/hooks/auto-memory-init.ps1"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+> **为什么用 `settings.local.json`**：避免被 ccswitch 等代理工具覆盖（见踩坑实录第 2 条）。
 
 ---
 

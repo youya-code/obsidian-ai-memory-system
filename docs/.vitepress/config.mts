@@ -43,6 +43,7 @@ export default defineConfig({
             { text: '第三步：创建记忆体系', link: '/guide/create-memory-system' },
             { text: '第四步：模板下载', link: '/guide/templates' },
             { text: '踩坑记录', link: '/guide/pitfalls' },
+            { text: '自动初始化', link: '/guide/auto-init' },
           ]
         }
       ]

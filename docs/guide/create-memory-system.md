@@ -111,3 +111,9 @@ Obsidian vault 中 记忆/ 文件夹按项目隔离存放：
 ## 下一步
 
 框架搭好了，去 [模板下载](/guide/templates) 获取现成模板即可快速上手。
+
+## 自动初始化（推荐）
+
+手动创建 MEMORY.md 和 Obsidian 文件夹太麻烦。推荐使用 SessionStart hook 自动化。
+
+详见 [自动初始化机制](./auto-init.md)。
