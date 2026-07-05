@@ -4,10 +4,19 @@
 
 | 记忆类型 | Obsidian 路径 | 标签 |
 |----------|--------------|------|
-| 项目约定 | 记忆/<项目名>/项目约定.md | [memory, <项目名>, convention] |
-| 踩坑记录 | 记忆/<项目名>/踩坑记录.md | [memory, <项目名>, pitfall] |
-| 偏好设置 | 记忆/<项目名>/偏好设置.md | [memory, <项目名>, preference] |
+| 项目约定（架构/规范/流程） | 记忆/<项目名>/项目约定.md | [memory, <项目名>, convention] |
+| 踩坑记录（bug/坑/注意事项） | 记忆/<项目名>/踩坑记录.md | [memory, <项目名>, pitfall] |
+| 偏好设置（用户习惯/偏好） | 记忆/<项目名>/偏好设置.md | [memory, <项目名>, preference] |
 
-读取：`mcp__obsidian__search_tags tags: [memory, <项目名>]`
-写入：`mcp__obsidian__update_note mode="append"`
-规则：同类记忆追加到同一文件，不新建碎片文件
+## 项目信息
+- 路径：<项目路径>
+- 技术栈：<自动检测>
+
+## 读取方式
+- Obsidian MCP 工具按标签检索
+- `search_tags tags: [memory, <项目名>]` 检出本项目全部记忆
+
+## 规则
+- 此处只保留本指针文件，不写详细内容
+- 新记忆追加到 Obsidian 对应文件末尾
+- 本文件由 auto-memory-init.ps1 自动生成，无需手动创建

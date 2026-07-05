@@ -1,11 +1,15 @@
 {
-  "mcpServers": {
-    "obsidian": {
-      "type": "http",
-      "url": "http://127.0.0.1:27124/mcp",
-      "headers": {
-        "Content-Type": "application/json"
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell -ExecutionPolicy Bypass -File C:/Users/<你的用户名>/.claude/hooks/auto-memory-init.ps1"
+          }
+        ]
       }
-    }
+    ]
   }
 }
